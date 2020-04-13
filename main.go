@@ -11,9 +11,9 @@ import (
 )
 
 func main() {
-	sx := sigctx.New(os.Interrupt).Start(context.Background())
-	defer sx.Stop()
-	err := run(sx.Context())
+	ctx, cancel := sigctx.WithCancelSignal(context.Background(), os.Interrupt)
+	defer cancel()
+	err := run(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
