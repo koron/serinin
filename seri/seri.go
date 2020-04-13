@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-redis/redis"
 	"github.com/google/uuid"
+	"github.com/koron-go/ctxsrv"
 )
 
 type Seri struct {
@@ -78,37 +79,18 @@ func New(cf *Config) (*Seri, error) {
 }
 
 func (s *Seri) Serve(ctx context.Context) error {
-	srv := http.Server{
+	s.log.Printf("server: listening on %s", s.cf.Addr)
+	return ctxsrv.HTTP(&http.Server{
 		Addr:    s.cf.Addr,
 		Handler: http.HandlerFunc(s.serveHTTP),
-	}
-	ctxSrv, cancelSrv := context.WithCancel(context.Background())
-	defer cancelSrv()
-	ch := make(chan error)
-	go func() {
-		select {
-		case <-ctx.Done():
+	}).WithShutdownTimeout(s.cf.ShutdownTimeout).
+		WithDoneContext(func() {
 			s.log.Printf("server: context canceled")
-			ctxShut := context.Background()
-			if d := s.cf.ShutdownTimeout; d > 0 {
-				ctx, cancel := context.WithTimeout(ctxShut, d)
-				defer cancel()
-				ctxShut = ctx
-			}
-			ch <- srv.Shutdown(ctxShut)
-		case <-ctxSrv.Done():
+		}).
+		WithDoneServer(func() {
 			s.log.Printf("server: closed")
-			ch <- nil
-		}
-		close(ch)
-	}()
-	s.log.Printf("server: running on %s", s.cf.Addr)
-	err := srv.ListenAndServe()
-	cancelSrv()
-	if err != nil && err != http.ErrServerClosed {
-		return err
-	}
-	return <-ch
+		}).
+		ServeWithContext(ctx)
 }
 
 func (s *Seri) reportError(w http.ResponseWriter, reqid string, code int, title string, err error) {
