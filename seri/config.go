@@ -13,9 +13,9 @@ type Config struct {
 
 	ShutdownTimeout Duration `json:"shutdown_timeout"`
 
-	// HttpClientTimeout is default timeout for HTTP client.
+	// HTTPClientTimeout is default timeout for HTTP client.
 	// This will be override by `endpoints["foobar"].timeout`.
-	HttpClientTimeout Duration `json:"http_client_timeout"`
+	HTTPClientTimeout Duration `json:"http_client_timeout"`
 
 	Endpoints map[string]Endpoint `json:"endpoints"`
 
@@ -60,12 +60,15 @@ func LoadConfig(name string) (*Config, error) {
 	return &c, nil
 }
 
+// Duration provides JSON marshaler/unmarshaler for `time.Duration`.
 type Duration time.Duration
 
+// MarshalJSON provides `json.Marshaler`.
 func (d Duration) MarshalJSON() ([]byte, error) {
 	return json.Marshal(time.Duration(d).String())
 }
 
+// UnmarshalJSON provides `json.Unmarshaler`.
 func (d *Duration) UnmarshalJSON(b []byte) error {
 	var v interface{}
 	if err := json.Unmarshal(b, &v); err != nil {

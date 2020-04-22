@@ -24,9 +24,9 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
-	s, err := seri.New(c)
+	b, err := seri.NewBroker(c)
 	if err != nil {
-		return fmt.Errorf("failed to setup server: %w", err)
+		return fmt.Errorf("failed to setup broker: %w", err)
 	}
-	return s.Serve(ctx)
+	return b.Serve(ctx)
 }
