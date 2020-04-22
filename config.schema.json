@@ -1,0 +1,101 @@
+{
+  "$id": "https://github.com/koron/serinin/blob/master/config.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "koron/serinin configuration schema",
+
+  "definitions": {
+
+    "Config": {
+      "type": "object",
+      "description": "Serinin broker configuration",
+      "properties": {
+        "addr": {
+          "type": "string",
+          "description": "Address to serve the serinin broker",
+          "examples": [ ":8000" ]
+        },
+        "shutdown_timeout": {
+          "$ref": "#/definitions/Duration",
+          "description": "Timeout for graceful shutdown",
+          "examples": [ "30s" ]
+        },
+        "http_client_timeout": {
+          "$ref": "#/definitions/Duration",
+          "description": "Default timeout for HTTP requests to dispatch",
+          "examples": [ "200ms" ]
+        },
+        "endpoints": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Endpoint"
+          },
+          "description": "Collection of endpoints. The key is name of endpoint."
+        },
+        "redis": {
+          "$ref": "#/definitions/Redis"
+        }
+      },
+      "additionalProperties": false,
+      "requierd": [
+        "addr",
+        "shutdown_timeout",
+        "http_client_timeout",
+        "endpoints",
+        "redis"
+      ]
+    },
+
+    "Endpoint": {
+      "type": "object",
+      "description": "An endpoint configuration",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "URL of endpoint"
+        },
+        "timeout": {
+          "$ref": "#/definitions/Duration",
+          "description": "Timeout of requests for this endpoint, optional"
+        }
+      },
+      "additionalProperties": false,
+      "required": [ "url" ]
+    },
+
+    "Redis": {
+      "type": "object",
+      "description": "Redis configuration to store responses",
+      "properties": {
+        "addr": {
+          "type": "string",
+          "description": "Address of redis"
+        },
+        "password": {
+          "type": "string",
+          "description": "Password to connect the redis, optional"
+        },
+        "dbnum": {
+          "type": "integer",
+          "description": "DB number of redis, optional"
+        },
+        "expire_in": {
+          "$ref": "#/definitions/Duration",
+          "description": "TTL to store responses"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "addr",
+        "expire_in"
+      ]
+    },
+
+    "Duration": {
+      "type": "string",
+      "description": "Time duration",
+      "pattern": "([0-9]*(\\.[0-9]*)?[a-z]+)+"
+    }
+  },
+
+  "$ref": "#/definitions/Config"
+}

@@ -9,3 +9,8 @@
 2.  Configuration - `cp serinin_config-sample.json serinin_config.json` and
     edit `serinin_config.json`
 3.  Run - `./serinin`
+
+## Configuration
+
+See `config.schema.json` for the schema of configuration.
+It is wrote in JSON Schema format.

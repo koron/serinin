@@ -41,7 +41,7 @@ type Endpoint struct {
 type Redis struct {
 	Addr     string   `json:"addr"`
 	Password string   `json:"password,omitempty"`
-	DBNum    int      `json:"dbNum,omitempty"`
+	DBNum    int      `json:"dbnum,omitempty"`
 	ExpireIn Duration `json:"expire_in"`
 }
 
