@@ -1,0 +1,19 @@
+{
+  "addr": ":8000",
+  "shutdown_timeout": "30s",
+  "http_client_timeout": "0.2s",
+
+  "endpoints": {
+    "dst1": { "url": "http://127.0.0.1:10001" },
+    "dst2": { "url": "http://127.0.0.1:10002" },
+    "dst3": { "url": "http://127.0.0.1:10003" },
+    "dst4": { "url": "http://127.0.0.1:10004" },
+    "dst5": { "url": "http://127.0.0.1:10005" },
+    "dst6": { "url": "http://127.0.0.1:10006" }
+  },
+
+  "redis": {
+    "addr": "localhost:6379",
+    "expire_in": "120s"
+  }
+}

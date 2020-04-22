@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/koron-go/sigctx"
 	"github.com/koron/serinin/seri"
@@ -20,25 +20,13 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	s, err := seri.New(&seri.Config{
-		Addr:              ":8000",
-		ShutdownTimeout:   30 * time.Second,
-		HttpClientTimeout: 200 * time.Millisecond,
-		Endpoints: map[string]seri.Endpoint{
-			"dst1": {URL: "http://127.0.0.1:10000"},
-			"dst2": {URL: "http://127.0.0.1:10001"},
-			"dst3": {URL: "http://127.0.0.1:10002"},
-			"dst4": {URL: "http://127.0.0.1:10003"},
-			"dst5": {URL: "http://127.0.0.1:10004"},
-			"dst6": {URL: "http://127.0.0.1:10005"},
-		},
-		Redis: seri.Redis{
-			Addr:   "localhost:6379",
-			Expire: 30 * time.Second,
-		},
-	})
+	c, err := seri.LoadConfig("serinin_config.json")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+	s, err := seri.New(c)
+	if err != nil {
+		return fmt.Errorf("failed to setup server: %w", err)
 	}
 	return s.Serve(ctx)
 }

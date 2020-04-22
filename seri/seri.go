@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/go-redis/redis"
 	"github.com/google/uuid"
@@ -65,7 +66,7 @@ func New(cf *Config) (*Seri, error) {
 		cf:  cf.Clone(),
 		log: log.New(os.Stdout, "", log.LstdFlags),
 		cl: &http.Client{
-			Timeout: cf.HttpClientTimeout,
+			Timeout: time.Duration(cf.HttpClientTimeout),
 		},
 		redis: redis.NewClient(&redis.Options{
 			Addr:     cf.Redis.Addr,
@@ -83,7 +84,7 @@ func (s *Seri) Serve(ctx context.Context) error {
 	return ctxsrv.HTTP(&http.Server{
 		Addr:    s.cf.Addr,
 		Handler: http.HandlerFunc(s.serveHTTP),
-	}).WithShutdownTimeout(s.cf.ShutdownTimeout).
+	}).WithShutdownTimeout(time.Duration(s.cf.ShutdownTimeout)).
 		WithDoneContext(func() {
 			s.log.Printf("server: context canceled")
 		}).
@@ -257,10 +258,10 @@ func (s *Seri) storeRequest(reqid string, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if s.cf.Redis.Expire <= 0 {
+	if s.cf.Redis.ExpireIn <= 0 {
 		return nil
 	}
-	_, err = s.redis.Expire(reqid, s.cf.Redis.Expire).Result()
+	_, err = s.redis.Expire(reqid, time.Duration(s.cf.Redis.ExpireIn)).Result()
 	if err != nil {
 		return err
 	}
