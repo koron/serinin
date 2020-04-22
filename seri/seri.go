@@ -84,16 +84,16 @@ func NewBroker(cf *Config) (*Broker, error) {
 
 // Serve starts HTTP service.
 func (b *Broker) Serve(ctx context.Context) error {
-	b.log.Printf("server: listening on %b", b.cf.Addr)
+	b.log.Printf("broker: listening on %s", b.cf.Addr)
 	return ctxsrv.HTTP(&http.Server{
 		Addr:    b.cf.Addr,
 		Handler: http.HandlerFunc(b.serveHTTP),
 	}).WithShutdownTimeout(time.Duration(b.cf.ShutdownTimeout)).
 		WithDoneContext(func() {
-			b.log.Printf("server: context canceled")
+			b.log.Printf("broker: context canceled")
 		}).
 		WithDoneServer(func() {
-			b.log.Printf("server: closed")
+			b.log.Printf("broker: closed")
 		}).
 		ServeWithContext(ctx)
 }
@@ -159,8 +159,9 @@ func (b *Broker) seriGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b.log.Printf("worker: reqid=%s method=%s: accept", reqid, r.Method)
+	q := r.URL.RawQuery
 	for _, ep := range b.eps {
-		go b.goGet(reqid, ep.name, ep.url.String())
+		go b.goGet(reqid, ep.name, b.concatQuery(ep.url, q).String())
 	}
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
@@ -188,7 +189,7 @@ func (b *Broker) goGet(reqid, epname, url string) {
 		b.log.Printf("worker: reqid=%s epname=%s: failed to store: %s", reqid, epname, err)
 		return
 	}
-	b.log.Printf("worker: reqid=%s epname=%s: success", reqid, epname)
+	//b.log.Printf("worker: reqid=%s epname=%s: success", reqid, epname)
 }
 
 func (b *Broker) seriPost(w http.ResponseWriter, r *http.Request) {
@@ -208,8 +209,9 @@ func (b *Broker) seriPost(w http.ResponseWriter, r *http.Request) {
 	}
 	b.log.Printf("worker: reqid=%s method=%s: accept", reqid, r.Method)
 	ct := r.Header.Get("Content-Type")
+	q := r.URL.RawQuery
 	for _, ep := range b.eps {
-		go b.goPost(reqid, ep.name, ep.url.String(), ct, bytes.NewReader(d))
+		go b.goPost(reqid, ep.name, b.concatQuery(ep.url, q).String(), ct, bytes.NewReader(d))
 	}
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
@@ -237,7 +239,7 @@ func (b *Broker) goPost(reqid, epname, url, contentType string, body io.Reader) 
 		b.log.Printf("worker: reqid=%s epname=%s: failed to store: %s", reqid, epname, err)
 		return
 	}
-	b.log.Printf("worker: reqid=%s epname=%s: success", reqid, epname)
+	//b.log.Printf("worker: reqid=%s epname=%s: success", reqid, epname)
 }
 
 func (b *Broker) concatQuery(base *url.URL, q string) *url.URL {
