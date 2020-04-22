@@ -3,5 +3,5 @@ tags
 tmp/
 
 serinin_config.json
-./dstsrvs
-./serinin
+/dstsrvs
+/serinin
