@@ -1,7 +1,7 @@
 *.exe
-dstsrvs
-serinin
 tags
 tmp/
 
 serinin_config.json
+./dstsrvs
+./serinin
