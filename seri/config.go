@@ -32,6 +32,8 @@ func (c *Config) Clone() Config {
 type Endpoint struct {
 	URL string `json:"url"`
 
+	// Timeout provides timeout duration for each endpoints.
+	// default is Config.HTTPClientTimeout, when this is omitted.
 	Timeout Duration `json:"timeout,omitempty"`
 }
 

@@ -34,6 +34,7 @@ type Broker struct {
 type endpoint struct {
 	name string
 	url  *url.URL
+	to   time.Duration
 }
 
 func conf2eps(cf *Config) ([]endpoint, error) {
@@ -43,7 +44,15 @@ func conf2eps(cf *Config) ([]endpoint, error) {
 		if err != nil {
 			return nil, err
 		}
-		eps = append(eps, endpoint{name: n, url: u})
+		to := ep.Timeout
+		if to <= 0 {
+			to = cf.HTTPClientTimeout
+		}
+		eps = append(eps, endpoint{
+			name: n,
+			url:  u,
+			to:   time.Duration(to),
+		})
 	}
 	return eps, nil
 }
@@ -68,9 +77,7 @@ func NewBroker(cf *Config) (*Broker, error) {
 	b := &Broker{
 		cf:  cf.Clone(),
 		log: log.New(os.Stdout, "", log.LstdFlags),
-		cl: &http.Client{
-			Timeout: time.Duration(cf.HTTPClientTimeout),
-		},
+		cl:  &http.Client{},
 		redis: redis.NewClient(&redis.Options{
 			Addr:     cf.Redis.Addr,
 			Password: cf.Redis.Password,
@@ -159,9 +166,9 @@ func (b *Broker) seriGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b.log.Printf("worker: reqid=%s method=%s: accept", reqid, r.Method)
-	q := r.URL.RawQuery
-	for _, ep := range b.eps {
-		go b.goGet(reqid, ep.name, b.concatQuery(ep.url, q).String())
+	qs := r.URL.RawQuery
+	for i := range b.eps {
+		go b.goDo(reqid, &b.eps[i], "GET", qs, "", nil)
 	}
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
@@ -169,27 +176,6 @@ func (b *Broker) seriGet(w http.ResponseWriter, r *http.Request) {
 		RequestID: reqid,
 		Endpoints: b.ens,
 	})
-}
-
-func (b *Broker) goGet(reqid, epname, url string) {
-	resp, err := b.cl.Get(url)
-	if err != nil {
-		b.log.Printf("worker: reqid=%s epname=%s: failed to request: %s", reqid, epname, err)
-		return
-	}
-	defer resp.Body.Close()
-	sc := resp.StatusCode
-	da, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		b.log.Printf("worker: reqid=%s epname=%s: failed to read: %s", reqid, epname, err)
-		return
-	}
-	err = b.storeResponse(reqid, epname, sc, da)
-	if err != nil {
-		b.log.Printf("worker: reqid=%s epname=%s: failed to store: %s", reqid, epname, err)
-		return
-	}
-	//b.log.Printf("worker: reqid=%s epname=%s: success", reqid, epname)
 }
 
 func (b *Broker) seriPost(w http.ResponseWriter, r *http.Request) {
@@ -209,9 +195,9 @@ func (b *Broker) seriPost(w http.ResponseWriter, r *http.Request) {
 	}
 	b.log.Printf("worker: reqid=%s method=%s: accept", reqid, r.Method)
 	ct := r.Header.Get("Content-Type")
-	q := r.URL.RawQuery
-	for _, ep := range b.eps {
-		go b.goPost(reqid, ep.name, b.concatQuery(ep.url, q).String(), ct, bytes.NewReader(d))
+	qs := r.URL.RawQuery
+	for i := range b.eps {
+		go b.goDo(reqid, &b.eps[i], "POST", qs, ct, bytes.NewReader(d))
 	}
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
@@ -219,27 +205,6 @@ func (b *Broker) seriPost(w http.ResponseWriter, r *http.Request) {
 		RequestID: reqid,
 		Endpoints: b.ens,
 	})
-}
-
-func (b *Broker) goPost(reqid, epname, url, contentType string, body io.Reader) {
-	resp, err := b.cl.Post(url, contentType, body)
-	if err != nil {
-		b.log.Printf("worker: reqid=%s epname=%s: failed to request: %s", reqid, epname, err)
-		return
-	}
-	defer resp.Body.Close()
-	sc := resp.StatusCode
-	da, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		b.log.Printf("worker: reqid=%s epname=%s: failed to read: %s", reqid, epname, err)
-		return
-	}
-	err = b.storeResponse(reqid, epname, sc, da)
-	if err != nil {
-		b.log.Printf("worker: reqid=%s epname=%s: failed to store: %s", reqid, epname, err)
-		return
-	}
-	//b.log.Printf("worker: reqid=%s epname=%s: success", reqid, epname)
 }
 
 func (b *Broker) concatQuery(base *url.URL, q string) *url.URL {
@@ -281,4 +246,40 @@ func (b *Broker) storeResponse(reqid, epname string, statusCode int, data []byte
 		return err
 	}
 	return nil
+}
+
+func (b *Broker) goDo(reqid string, ep *endpoint, method, qs, ct string, body io.Reader) {
+	ctx := context.Background()
+	if ep.to > 0 {
+		x, cancel := context.WithTimeout(ctx, ep.to)
+		defer cancel()
+		ctx = x
+	}
+	u := b.concatQuery(ep.url, qs).String()
+	req, err := http.NewRequestWithContext(ctx, method, u, body)
+	if ct != "" {
+		req.Header.Set("Content-Type", ct)
+	}
+	if err != nil {
+		b.log.Printf("worker: reqid=%s epname=%s: failed to request: %s", reqid, ep.name, err)
+		return
+	}
+	resp, err := b.cl.Do(req)
+	if err != nil {
+		b.log.Printf("worker: reqid=%s epname=%s: failed to round trip: %s", reqid, ep.name, err)
+		return
+	}
+	defer resp.Body.Close()
+	sc := resp.StatusCode
+	da, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		b.log.Printf("worker: reqid=%s epname=%s: failed to read: %s", reqid, ep.name, err)
+		return
+	}
+	err = b.storeResponse(reqid, ep.name, sc, da)
+	if err != nil {
+		b.log.Printf("worker: reqid=%s epname=%s: failed to store: %s", reqid, ep.name, err)
+		return
+	}
+	//b.log.Printf("worker: reqid=%s epname=%s: success", reqid, ep.name)
 }
