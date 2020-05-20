@@ -54,7 +54,7 @@ func (s *Server) serve(ctx context.Context, id, port int) error {
 	srv := http.Server{
 		Addr: fmt.Sprintf(":%d", port),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			s.log.Printf("dstsrv#%d: receive %s", id, r.URL.String())
+			//s.log.Printf("dstsrv#%d: receive %s", id, r.URL.String())
 			if x := r.URL.Query().Get(sleepKey); x != "" {
 				d, err := time.ParseDuration(x)
 				if err != nil {

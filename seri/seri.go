@@ -165,11 +165,13 @@ func (b *Broker) seriGet(w http.ResponseWriter, r *http.Request) {
 		b.reportError(w, reqid, 500, "failed to prepare storage", err)
 		return
 	}
-	b.log.Printf("worker: reqid=%s method=%s: accept", reqid, r.Method)
+	//b.log.Printf("worker: reqid=%s method=%s: accept", reqid, r.Method)
 	qs := r.URL.RawQuery
-	for i := range b.eps {
-		go b.goDo(reqid, &b.eps[i], "GET", qs, "", nil)
-	}
+	go func() {
+		for i := range b.eps {
+			go b.goDo(reqid, &b.eps[i], "GET", qs, "", nil)
+		}
+	}()
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(&response{
@@ -193,7 +195,7 @@ func (b *Broker) seriPost(w http.ResponseWriter, r *http.Request) {
 		b.reportError(w, reqid, 500, "failed to prepare storage", err)
 		return
 	}
-	b.log.Printf("worker: reqid=%s method=%s: accept", reqid, r.Method)
+	//b.log.Printf("worker: reqid=%s method=%s: accept", reqid, r.Method)
 	ct := r.Header.Get("Content-Type")
 	qs := r.URL.RawQuery
 	for i := range b.eps {
@@ -240,7 +242,7 @@ func (b *Broker) storeRequest(reqid string, r *http.Request) error {
 }
 
 func (b *Broker) storeResponse(reqid, epname string, statusCode int, data []byte) error {
-	b.log.Printf("store: reqid=%s epname=%s sc=%d: stored", reqid, epname, statusCode)
+	//b.log.Printf("store: reqid=%s epname=%s sc=%d: stored", reqid, epname, statusCode)
 	_, err := b.redis.HSet(reqid, epname, data).Result()
 	if err != nil {
 		return err
