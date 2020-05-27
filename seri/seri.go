@@ -75,12 +75,11 @@ func NewBroker(cf *Config) (*Broker, error) {
 	if err != nil {
 		return nil, err
 	}
-	storage := newStorage(cf)
 	b := &Broker{
 		cf:  cf.Clone(),
 		log: log.New(os.Stderr, "", log.LstdFlags),
-		cl:  &http.Client{},
-		st:  storage,
+		cl:  newClient(cf),
+		st:  newStorage(cf),
 		eps: eps,
 		ens: eps2ens(eps),
 	}
