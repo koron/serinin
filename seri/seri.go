@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -30,6 +31,9 @@ type Broker struct {
 
 	eps []endpoint
 	ens []string
+
+	inquireCount  int64
+	inquireFailed int64
 }
 
 type endpoint struct {
@@ -101,6 +105,14 @@ func (b *Broker) Serve(ctx context.Context) error {
 		WithDoneServer(func() {
 			b.log.Printf("[INFO] broker: closed")
 		})
+	go func() {
+		for {
+			f := atomic.SwapInt64(&b.inquireFailed, 0)
+			c := atomic.SwapInt64(&b.inquireCount, 0)
+			log.Printf("fail: %d / %d\n", f, c)
+			time.Sleep(1 *time.Second)
+		}
+	}()
 	return cfg.ServeWithContext(ctx)
 }
 
@@ -205,6 +217,7 @@ func (b *Broker) concatQuery(base *url.URL, q string) *url.URL {
 }
 
 func (b *Broker) inquire(reqid string, ep *endpoint, method, qs, ct string, body io.Reader) {
+	atomic.AddInt64(&b.inquireCount, 1)
 	ctx := context.Background()
 	if ep.to > 0 {
 		x, cancel := context.WithTimeout(ctx, ep.to)
@@ -217,23 +230,27 @@ func (b *Broker) inquire(reqid string, ep *endpoint, method, qs, ct string, body
 		req.Header.Set("Content-Type", ct)
 	}
 	if err != nil {
+		atomic.AddInt64(&b.inquireFailed, 1)
 		b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to request: %s", reqid, ep.name, err)
 		return
 	}
 	resp, err := b.cl.Do(req)
 	if err != nil {
-		b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to round trip: %s", reqid, ep.name, err)
+		atomic.AddInt64(&b.inquireFailed, 1)
+		//b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to round trip: %s", reqid, ep.name, err)
 		return
 	}
 	defer resp.Body.Close()
 	//sc := resp.StatusCode
 	da, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		atomic.AddInt64(&b.inquireFailed, 1)
 		b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to read: %s", reqid, ep.name, err)
 		return
 	}
 	err = b.st.StoreResponse(reqid, ep.name, da)
 	if err != nil {
+		atomic.AddInt64(&b.inquireFailed, 1)
 		b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to store: %s", reqid, ep.name, err)
 		return
 	}

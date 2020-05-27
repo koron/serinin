@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -42,13 +43,9 @@ func (s *Server) ServeAll(ctx context.Context) error {
 }
 
 func (s *Server) serve(ctx context.Context, id, port int) error {
-	serial := 0
-	var mu sync.Mutex
-	getSerial := func() int {
-		mu.Lock()
-		defer mu.Unlock()
-		serial++
-		return serial
+	serial := int64(0)
+	getSerial := func() int64 {
+		return atomic.AddInt64(&serial, 1)
 	}
 	sleepKey := fmt.Sprintf("sleep.%d", id)
 	srv := http.Server{
