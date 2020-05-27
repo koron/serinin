@@ -17,6 +17,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/google/uuid"
 	"github.com/koron-go/ctxsrv"
+	"github.com/koron-go/reqlim"
 )
 
 // Broker traps and dispatch HTTP requests to servers.
@@ -92,17 +93,19 @@ func NewBroker(cf *Config) (*Broker, error) {
 // Serve starts HTTP service.
 func (b *Broker) Serve(ctx context.Context) error {
 	b.log.Printf("broker: listening on %s", b.cf.Addr)
-	return ctxsrv.HTTP(&http.Server{
-		Addr:    b.cf.Addr,
-		Handler: http.HandlerFunc(b.serveHTTP),
-	}).WithShutdownTimeout(time.Duration(b.cf.ShutdownTimeout)).
+	var h http.Handler = http.HandlerFunc(b.serveHTTP)
+	if limit := b.cf.MaxHandlers; limit > 0 {
+		h = reqlim.Handler(h, limit, "")
+	}
+	cfg := ctxsrv.HTTP(&http.Server{Addr: b.cf.Addr, Handler: h}).
+		WithShutdownTimeout(time.Duration(b.cf.ShutdownTimeout)).
 		WithDoneContext(func() {
 			b.log.Printf("broker: context canceled")
 		}).
 		WithDoneServer(func() {
 			b.log.Printf("broker: closed")
-		}).
-		ServeWithContext(ctx)
+		})
+	return cfg.ServeWithContext(ctx)
 }
 
 func (b *Broker) reportError(w http.ResponseWriter, reqid string, code int, title string, err error) {

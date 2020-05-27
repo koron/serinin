@@ -13,6 +13,11 @@ type Config struct {
 
 	ShutdownTimeout Duration `json:"shutdown_timeout"`
 
+	// MaxHandlers limits the number of http.Handler ServeHTTP goroutines
+	// which may run at a time over all connections.
+	// Negative or zero no limit.
+	MaxHandlers int `json:"max_handlers"`
+
 	// HTTPClientTimeout is default timeout for HTTP client.
 	// This will be override by `endpoints["foobar"].timeout`.
 	HTTPClientTimeout Duration `json:"http_client_timeout"`

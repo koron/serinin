@@ -10,6 +10,8 @@ github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/koron-go/ctxsrv v1.0.0 h1:XjSScwJGtkJjZ9UZilHkxdTAAsd9Tk6P4+hx0AcS8VI=
 github.com/koron-go/ctxsrv v1.0.0/go.mod h1:JCpnysh/b7EGePGkdVsFl8GJopf2w2YsIS822K0XTx0=
+github.com/koron-go/reqlim v0.1.0 h1:4rWHE+bESaOpNau6USWU+gDykaB8beZGiTP4yQZxiqE=
+github.com/koron-go/reqlim v0.1.0/go.mod h1:3IrBcKEepf3JEjnI4rlv2knenr+rabOP9LueT2hu6zk=
 github.com/koron-go/sigctx v1.0.1 h1:BELVml5dbXNbdAnYn9dbrrJjAUdWRc3hCbGrQJ3qPuQ=
 github.com/koron-go/sigctx v1.0.1/go.mod h1:rNhEe0ZABGojjJzSbYS6levYvsW7ccrooc2rFSDW8U8=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
@@ -22,6 +24,8 @@ golang.org/x/net v0.0.0-20180906233101-161cd47e91fd h1:nTDtHvHSdCn1m6ITfMRqtOd/9
 golang.org/x/net v0.0.0-20180906233101-161cd47e91fd/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
 golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f h1:wMNYb4v58l5UBM7MYRLPG6ZhfOqbKu7X5eyFl8ZhKvA=
 golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
+golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a h1:WXEvlFVvvGxCJLG6REjsT03iWnKLEWinaScsxF2Vm2o=
+golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sys v0.0.0-20180909124046-d0be0721c37e/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20191120155948-bd437916bb0e h1:N7DeIrjYszNmSW409R3frPPwglRwMkXSBzwVbkOjLLA=
 golang.org/x/sys v0.0.0-20191120155948-bd437916bb0e/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
