@@ -124,9 +124,20 @@ var allowMethods = "GET, POST"
 func (b *Broker) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		b.seriGet(w, r)
+		b.dispatch(w, r, func(reqid string, ep *endpoint, qs string) {
+			b.inquire(reqid, ep, "GET", qs, "", nil)
+		})
+
 	case "POST":
-		b.seriPost(w, r)
+		d, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			b.reportError(w, "(N/A)", 500, "failed to read body", err)
+		}
+		ct := r.Header.Get("Content-Type")
+		b.dispatch(w, r, func(reqid string, ep *endpoint, qs string) {
+			b.inquire(reqid, ep, "POST", qs, ct, bytes.NewReader(d))
+		})
+
 	default:
 		w.Header().Add("Allow", allowMethods)
 		b.reportError(w, "", http.StatusMethodNotAllowed, "method not allowed",
@@ -157,53 +168,26 @@ type response struct {
 	Endpoints []string `json:"endpoints"`
 }
 
-func (b *Broker) seriGet(w http.ResponseWriter, r *http.Request) {
+func (b *Broker) dispatch(w http.ResponseWriter, r *http.Request, goFn func(reqid string, ep *endpoint, qs string)) {
 	reqid, err := b.newReqid()
 	if err != nil {
 		b.reportError(w, "(N/A)", 500, "failed to genrate ID", err)
 		return
 	}
+
 	err = b.storeRequest(reqid, r)
 	if err != nil {
 		b.reportError(w, reqid, 500, "failed to prepare storage", err)
 		return
 	}
 	//b.log.Printf("worker: reqid=%s method=%s: accept", reqid, r.Method)
+
 	qs := r.URL.RawQuery
 	go func() {
 		for i := range b.eps {
-			go b.goDo(reqid, &b.eps[i], "GET", qs, "", nil)
+			go goFn(reqid, &b.eps[i], qs)
 		}
 	}()
-	w.Header().Add("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(&response{
-		RequestID: reqid,
-		Endpoints: b.ens,
-	})
-}
-
-func (b *Broker) seriPost(w http.ResponseWriter, r *http.Request) {
-	reqid, err := b.newReqid()
-	if err != nil {
-		b.reportError(w, "(N/A)", 500, "failed to genrate ID", err)
-		return
-	}
-	d, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		b.reportError(w, reqid, 500, "failed to read body", err)
-	}
-	err = b.storeRequest(reqid, r)
-	if err != nil {
-		b.reportError(w, reqid, 500, "failed to prepare storage", err)
-		return
-	}
-	//b.log.Printf("worker: reqid=%s method=%s: accept", reqid, r.Method)
-	ct := r.Header.Get("Content-Type")
-	qs := r.URL.RawQuery
-	for i := range b.eps {
-		go b.goDo(reqid, &b.eps[i], "POST", qs, ct, bytes.NewReader(d))
-	}
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(&response{
@@ -253,7 +237,7 @@ func (b *Broker) storeResponse(reqid, epname string, statusCode int, data []byte
 	return nil
 }
 
-func (b *Broker) goDo(reqid string, ep *endpoint, method, qs, ct string, body io.Reader) {
+func (b *Broker) inquire(reqid string, ep *endpoint, method, qs, ct string, body io.Reader) {
 	ctx := context.Background()
 	if ep.to > 0 {
 		x, cancel := context.WithTimeout(ctx, ep.to)
