@@ -20,7 +20,7 @@ type Server struct {
 func NewServer(cf *Config) (*Server, error) {
 	return &Server{
 		cf:  cf.Clone(),
-		log: log.New(os.Stdout, "", log.LstdFlags),
+		log: log.New(os.Stderr, "", log.LstdFlags),
 	}, nil
 }
 
@@ -58,7 +58,7 @@ func (s *Server) serve(ctx context.Context, id, port int) error {
 			if x := r.URL.Query().Get(sleepKey); x != "" {
 				d, err := time.ParseDuration(x)
 				if err != nil {
-					s.log.Printf("dstsrv#%d: invalid sleep: %s", id, err)
+					s.log.Printf("[WARN] dstsrv#%d: invalid sleep: %s", id, err)
 				} else {
 					time.Sleep(d)
 				}
@@ -75,15 +75,15 @@ func (s *Server) serve(ctx context.Context, id, port int) error {
 	go func() {
 		select {
 		case <-ctx.Done():
-			s.log.Printf("dstsrv#%d: context canceled", id)
+			s.log.Printf("[INFO] dstsrv#%d: context canceled", id)
 			ch <- srv.Shutdown(context.Background())
 		case <-ctxSrv.Done():
-			s.log.Printf("dstsrv#%d: closed", id)
+			s.log.Printf("[INFO] dstsrv#%d: closed", id)
 			ch <- nil
 		}
 		close(ch)
 	}()
-	s.log.Printf("dstsrv#%d: running on %s", id, srv.Addr)
+	s.log.Printf("[INFO] dstsrv#%d: running on %s", id, srv.Addr)
 	err := srv.ListenAndServe()
 	cancelSrv()
 	if err != nil && err != http.ErrServerClosed {

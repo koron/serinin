@@ -25,7 +25,7 @@ type Config struct {
 	Endpoints map[string]Endpoint `json:"endpoints"`
 
 	// Redis is redis configuration.
-	Redis Redis `json:"redis"`
+	Redis *Redis `json:"redis"`
 }
 
 // Clone clones a configuration object.

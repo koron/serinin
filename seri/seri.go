@@ -14,7 +14,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-redis/redis"
 	"github.com/google/uuid"
 	"github.com/koron-go/ctxsrv"
 	"github.com/koron-go/reqlim"
@@ -23,10 +22,11 @@ import (
 // Broker traps and dispatch HTTP requests to servers.
 // And stores all responses to volatile storage (redis).
 type Broker struct {
-	cf    Config
-	log   *log.Logger
-	cl    *http.Client
-	redis *redis.Client
+	cf  Config
+	log *log.Logger
+	cl  *http.Client
+
+	st Storage
 
 	eps []endpoint
 	ens []string
@@ -75,15 +75,12 @@ func NewBroker(cf *Config) (*Broker, error) {
 	if err != nil {
 		return nil, err
 	}
+	storage := newStorage(cf)
 	b := &Broker{
 		cf:  cf.Clone(),
-		log: log.New(os.Stdout, "", log.LstdFlags),
+		log: log.New(os.Stderr, "", log.LstdFlags),
 		cl:  &http.Client{},
-		redis: redis.NewClient(&redis.Options{
-			Addr:     cf.Redis.Addr,
-			Password: cf.Redis.Password,
-			DB:       cf.Redis.DBNum,
-		}),
+		st:  storage,
 		eps: eps,
 		ens: eps2ens(eps),
 	}
@@ -92,7 +89,7 @@ func NewBroker(cf *Config) (*Broker, error) {
 
 // Serve starts HTTP service.
 func (b *Broker) Serve(ctx context.Context) error {
-	b.log.Printf("broker: listening on %s", b.cf.Addr)
+	b.log.Printf("[INFO] broker: listening on %s", b.cf.Addr)
 	var h http.Handler = http.HandlerFunc(b.serveHTTP)
 	if limit := b.cf.MaxHandlers; limit > 0 {
 		h = reqlim.Handler(h, limit, "")
@@ -100,10 +97,10 @@ func (b *Broker) Serve(ctx context.Context) error {
 	cfg := ctxsrv.HTTP(&http.Server{Addr: b.cf.Addr, Handler: h}).
 		WithShutdownTimeout(time.Duration(b.cf.ShutdownTimeout)).
 		WithDoneContext(func() {
-			b.log.Printf("broker: context canceled")
+			b.log.Printf("[INFO] broker: context canceled")
 		}).
 		WithDoneServer(func() {
-			b.log.Printf("broker: closed")
+			b.log.Printf("[INFO] broker: closed")
 		})
 	return cfg.ServeWithContext(ctx)
 }
@@ -141,7 +138,7 @@ func (b *Broker) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.Header().Add("Allow", allowMethods)
 		b.reportError(w, "", http.StatusMethodNotAllowed, "method not allowed",
-			fmt.Errorf("method %s is not allowed"))
+			fmt.Errorf("method %s is not allowed", r.Method))
 	}
 }
 
@@ -175,12 +172,11 @@ func (b *Broker) dispatch(w http.ResponseWriter, r *http.Request, goFn func(reqi
 		return
 	}
 
-	err = b.storeRequest(reqid, r)
+	err = b.st.StoreRequest(reqid, r.Method, r.URL.String())
 	if err != nil {
 		b.reportError(w, reqid, 500, "failed to prepare storage", err)
 		return
 	}
-	//b.log.Printf("worker: reqid=%s method=%s: accept", reqid, r.Method)
 
 	qs := r.URL.RawQuery
 	go func() {
@@ -209,34 +205,6 @@ func (b *Broker) concatQuery(base *url.URL, q string) *url.URL {
 	return &u
 }
 
-func (b *Broker) storeRequest(reqid string, r *http.Request) error {
-	_, err := b.redis.HMSet(reqid, map[string]interface{}{
-		"_id":     reqid,
-		"_method": r.Method,
-		"_url":    r.URL.String(),
-	}).Result()
-	if err != nil {
-		return err
-	}
-	if b.cf.Redis.ExpireIn <= 0 {
-		return nil
-	}
-	_, err = b.redis.Expire(reqid, time.Duration(b.cf.Redis.ExpireIn)).Result()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (b *Broker) storeResponse(reqid, epname string, statusCode int, data []byte) error {
-	//b.log.Printf("store: reqid=%s epname=%s sc=%d: stored", reqid, epname, statusCode)
-	_, err := b.redis.HSet(reqid, epname, data).Result()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (b *Broker) inquire(reqid string, ep *endpoint, method, qs, ct string, body io.Reader) {
 	ctx := context.Background()
 	if ep.to > 0 {
@@ -250,25 +218,24 @@ func (b *Broker) inquire(reqid string, ep *endpoint, method, qs, ct string, body
 		req.Header.Set("Content-Type", ct)
 	}
 	if err != nil {
-		b.log.Printf("worker: reqid=%s epname=%s: failed to request: %s", reqid, ep.name, err)
+		b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to request: %s", reqid, ep.name, err)
 		return
 	}
 	resp, err := b.cl.Do(req)
 	if err != nil {
-		b.log.Printf("worker: reqid=%s epname=%s: failed to round trip: %s", reqid, ep.name, err)
+		b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to round trip: %s", reqid, ep.name, err)
 		return
 	}
 	defer resp.Body.Close()
-	sc := resp.StatusCode
+	//sc := resp.StatusCode
 	da, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		b.log.Printf("worker: reqid=%s epname=%s: failed to read: %s", reqid, ep.name, err)
+		b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to read: %s", reqid, ep.name, err)
 		return
 	}
-	err = b.storeResponse(reqid, ep.name, sc, da)
+	err = b.st.StoreResponse(reqid, ep.name, da)
 	if err != nil {
-		b.log.Printf("worker: reqid=%s epname=%s: failed to store: %s", reqid, ep.name, err)
+		b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to store: %s", reqid, ep.name, err)
 		return
 	}
-	//b.log.Printf("worker: reqid=%s epname=%s: success", reqid, ep.name)
 }
