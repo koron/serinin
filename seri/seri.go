@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"sync/atomic"
 	"time"
 
@@ -32,8 +33,11 @@ type Broker struct {
 	eps []endpoint
 	ens []string
 
-	inquireCount  int64
-	inquireFailed int64
+	inquireCount   int64
+	inquireFailed  int64
+	inquireFailed0 int64
+
+	worker *Worker
 }
 
 type endpoint struct {
@@ -79,15 +83,31 @@ func NewBroker(cf *Config) (*Broker, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	var w *Worker
+	if cf.WorkerNum > 0 {
+		log.Printf("[DEBUG] WorkerNum=%d", cf.WorkerNum)
+		w := NewWorker(cf.WorkerNum)
+		w.Start()
+	}
+
 	b := &Broker{
-		cf:  cf.Clone(),
-		log: log.New(os.Stderr, "", log.LstdFlags),
-		cl:  newClient(cf),
-		st:  newStorage(cf),
-		eps: eps,
-		ens: eps2ens(eps),
+		cf:     cf.Clone(),
+		log:    log.New(os.Stderr, "", log.LstdFlags),
+		cl:     newClient(cf),
+		st:     newStorage(cf),
+		eps:    eps,
+		ens:    eps2ens(eps),
+		worker: w,
 	}
 	return b, nil
+}
+
+// Close closes broker.
+func (b *Broker) Close() {
+	if b.worker != nil {
+		b.worker.Close()
+	}
 }
 
 // Serve starts HTTP service.
@@ -95,22 +115,26 @@ func (b *Broker) Serve(ctx context.Context) error {
 	b.log.Printf("[INFO] broker: listening on %s", b.cf.Addr)
 	var h http.Handler = http.HandlerFunc(b.serveHTTP)
 	if limit := b.cf.MaxHandlers; limit > 0 {
+		b.log.Printf("[DEBUG] max handlers limitation: %d", b.cf.MaxHandlers)
 		h = reqlim.Handler(h, limit, "")
 	}
 	cfg := ctxsrv.HTTP(&http.Server{Addr: b.cf.Addr, Handler: h}).
 		WithShutdownTimeout(time.Duration(b.cf.ShutdownTimeout)).
 		WithDoneContext(func() {
 			b.log.Printf("[INFO] broker: context canceled")
+			b.Close()
 		}).
 		WithDoneServer(func() {
 			b.log.Printf("[INFO] broker: closed")
 		})
 	go func() {
 		for {
+			f0 := atomic.SwapInt64(&b.inquireFailed0, 0)
 			f := atomic.SwapInt64(&b.inquireFailed, 0)
 			c := atomic.SwapInt64(&b.inquireCount, 0)
-			log.Printf("fail: %d / %d\n", f, c)
-			time.Sleep(1 *time.Second)
+			g := runtime.NumGoroutine()
+			log.Printf("goroutine:%d fail:%d=(%d+%d) accept:%d", g, f0+f, f0, f, c)
+			time.Sleep(1 * time.Second)
 		}
 	}()
 	return cfg.ServeWithContext(ctx)
@@ -190,11 +214,23 @@ func (b *Broker) dispatch(w http.ResponseWriter, r *http.Request, goFn func(reqi
 	}
 
 	qs := r.URL.RawQuery
-	go func() {
+	if b.worker != nil {
 		for i := range b.eps {
-			go goFn(reqid, &b.eps[i], qs)
+			p := &b.eps[i]
+			err := b.worker.Run(func() { goFn(reqid, p, qs) })
+			if err != nil {
+				atomic.AddInt64(&b.inquireFailed0, 1)
+				b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to queue: %s", reqid, p.name, err)
+			}
 		}
-	}()
+	} else {
+		go func() {
+			for i := range b.eps {
+				go goFn(reqid, &b.eps[i], qs)
+			}
+		}()
+	}
+
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(&response{

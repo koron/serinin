@@ -18,6 +18,9 @@ type Config struct {
 	// Negative or zero no limit.
 	MaxHandlers int `json:"max_handlers"`
 
+	// WorkerNum declare number of workers.
+	WorkerNum int `json:"worker_num"`
+
 	// HTTPClientTimeout is default timeout for HTTP client.
 	// This will be override by `endpoints["foobar"].timeout`.
 	HTTPClientTimeout Duration `json:"http_client_timeout"`
