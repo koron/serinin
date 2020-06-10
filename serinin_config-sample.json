@@ -2,7 +2,7 @@
   "addr": ":8000",
   "shutdown_timeout": "30s",
   "max_handlers": 16,
-  "worker": 96,
+  "worker_num": 96,
   "http_client_timeout": "0.2s",
 
   "endpoints": {

@@ -90,7 +90,7 @@ func NewBroker(cf *Config) (*Broker, error) {
 
 	var w *Worker
 	if cf.WorkerNum > 0 {
-		log.Printf("[DEBUG] WorkerNum=%d", cf.WorkerNum)
+		log.Printf("[DEBUG] %d workers launched", cf.WorkerNum)
 		w := NewWorker(cf.WorkerNum)
 		w.Start()
 	}
