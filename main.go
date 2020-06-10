@@ -35,10 +35,12 @@ func run(ctx context.Context) error {
 		monitor int
 		worker  int
 		handler int
+		noredis bool
 	)
 	flag.IntVar(&monitor, "monitor", 0, "enable monitoring (poll system metric in each N's second)")
 	flag.IntVar(&worker, "worker", 0, "override worker_num configuration if larger than zero")
 	flag.IntVar(&handler, "handler", 0, "override max_handlers configuration if larger than zero")
+	flag.BoolVar(&noredis, "noredis", false, "force diable redis, override redis configuration")
 	flag.Parse()
 
 	c, err := seri.LoadConfig("serinin_config.json")
@@ -56,6 +58,12 @@ func run(ctx context.Context) error {
 			log.Printf("[INFO] max_handlers is overridden: %d -> %d", c.MaxHandlers, handler)
 		}
 		c.MaxHandlers = handler
+	}
+	if noredis {
+		if c.Redis != nil {
+			log.Print("[INFO] redis is disabled forcibly")
+		}
+		c.Redis = nil
 	}
 
 	b, err := seri.NewBroker(c)
