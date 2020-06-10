@@ -19,6 +19,14 @@
           "description": "Timeout for graceful shutdown",
           "examples": [ "30s" ]
         },
+        "max_handlers": {
+          "type": "integer",
+          "description": "Limits the number of requests that executing in parallel. default is zero, no limit"
+        },
+        "worker_num": {
+          "type": "integer",
+          "description": "Number of workers to query and store for each endpoint. default is zero, no limit (don't use workers)"
+        },
         "http_client_timeout": {
           "$ref": "#/definitions/Duration",
           "description": "Default timeout for HTTP requests to dispatch",
