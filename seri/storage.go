@@ -9,9 +9,7 @@ import (
 
 // Storage is requirements to store results.
 type Storage interface {
-	StoreRequest(reqid, method, url string) error
-
-	StoreResponse(reqid, name string, data []byte) error
+	Store(reqid, method, url string, results []*Result) error
 }
 
 type redisStore struct {
@@ -30,34 +28,22 @@ func newRedisStore(cfg *Redis) *redisStore {
 	}
 }
 
-func (rs *redisStore) StoreRequest(reqid, method, url string) error {
+func (rs *redisStore) Store(reqid, method, url string, results []*Result) error {
+	d := make(map[string]interface{}, len(results)+3)
+	d["_id"] = reqid
+	d["_method"] = method
+	d["_url"] = url
+	for _, r := range results {
+		if len(r.Data) > 0 {
+			d[r.Name] = r.Data
+		}
+	}
 	p := rs.client.TxPipeline()
-	_, err := p.HMSet(reqid, map[string]interface{}{
-		"_id":     reqid,
-		"_method": method,
-		"_url":    url,
-	}).Result()
-	if err != nil {
-		p.Discard()
-		return err
+	p.HMSet(reqid, d)
+	if rs.expiresIn > 0 {
+		p.Expire(reqid, time.Duration(rs.expiresIn)).Result()
 	}
-	if rs.expiresIn <= 0 {
-		_, err := p.Exec()
-		return err
-	}
-	_, err = p.Expire(reqid, time.Duration(rs.expiresIn)).Result()
-	if err != nil {
-		p.Discard()
-		return err
-	}
-	_, err = p.Exec()
-	return err
-}
-
-var storeCount int
-
-func (rs *redisStore) StoreResponse(reqid, name string, data []byte) error {
-	_, err := rs.client.HSet(reqid, name, data).Result()
+	_, err := p.Exec()
 	if err != nil {
 		return err
 	}
@@ -68,11 +54,7 @@ var _ Storage = (*redisStore)(nil)
 
 type discardStore struct{}
 
-func (*discardStore) StoreRequest(reqid, method, url string) error {
-	return nil
-}
-
-func (*discardStore) StoreResponse(reqid, name string, data []byte) error {
+func (*discardStore) Store(reqid, method, url string, results []*Result) error {
 	return nil
 }
 

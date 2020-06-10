@@ -150,8 +150,8 @@ var allowMethods = "GET, POST"
 func (b *Broker) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		b.dispatch(w, r, func(reqid string, ep *endpoint, qs string) {
-			b.inquire(reqid, ep, "GET", qs, "", nil)
+		b.dispatch(w, r, func(reqid string, ch chan *Result, ep *endpoint, qs string) {
+			b.inquire(reqid, ch, ep, "GET", qs, "", nil)
 		})
 
 	case "POST":
@@ -160,8 +160,8 @@ func (b *Broker) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			b.reportError(w, "(N/A)", 500, "failed to read body", err)
 		}
 		ct := r.Header.Get("Content-Type")
-		b.dispatch(w, r, func(reqid string, ep *endpoint, qs string) {
-			b.inquire(reqid, ep, "POST", qs, ct, bytes.NewReader(d))
+		b.dispatch(w, r, func(reqid string, ch chan *Result, ep *endpoint, qs string) {
+			b.inquire(reqid, ch, ep, "POST", qs, ct, bytes.NewReader(d))
 		})
 
 	default:
@@ -194,24 +194,34 @@ type response struct {
 	Endpoints []string `json:"endpoints"`
 }
 
-func (b *Broker) dispatch(w http.ResponseWriter, r *http.Request, goFn func(reqid string, ep *endpoint, qs string)) {
+type dispatchFunc func(reqid string, ch chan *Result, ep *endpoint, qs string)
+
+func (b *Broker) dispatch(w http.ResponseWriter, r *http.Request, goFn dispatchFunc) {
 	reqid, err := b.newReqid()
 	if err != nil {
 		b.reportError(w, "(N/A)", 500, "failed to genrate ID", err)
 		return
 	}
 
-	err = b.st.StoreRequest(reqid, r.Method, r.URL.String())
-	if err != nil {
-		b.reportError(w, reqid, 500, "failed to prepare storage", err)
-		return
-	}
+	n := len(b.eps)
+	ch := make(chan *Result, n)
+	go func(rid, method, url string) {
+		results := make([]*Result, 0, n)
+		for len(results) < n {
+			select {
+			case r := <-ch:
+				results = append(results, r)
+			}
+		}
+		close(ch)
+		b.st.Store(rid, method, url, results)
+	}(reqid, r.Method, r.URL.String())
 
 	qs := r.URL.RawQuery
 	if b.worker != nil {
 		for i := range b.eps {
 			p := &b.eps[i]
-			err := b.worker.Run(func() { goFn(reqid, p, qs) })
+			err := b.worker.Run(func() { goFn(reqid, ch, p, qs) })
 			if err != nil {
 				atomic.AddInt64(&b.stat.WorkerFail, 1)
 				b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to queue: %s", reqid, p.name, err)
@@ -220,7 +230,7 @@ func (b *Broker) dispatch(w http.ResponseWriter, r *http.Request, goFn func(reqi
 	} else {
 		go func() {
 			for i := range b.eps {
-				go goFn(reqid, &b.eps[i], qs)
+				go goFn(reqid, ch, &b.eps[i], qs)
 			}
 		}()
 	}
@@ -246,7 +256,12 @@ func (b *Broker) concatQuery(base *url.URL, q string) *url.URL {
 	return &u
 }
 
-func (b *Broker) inquire(reqid string, ep *endpoint, method, qs, ct string, body io.Reader) {
+type Result struct {
+	Name string
+	Data []byte
+}
+
+func (b *Broker) inquire(reqid string, ch chan *Result, ep *endpoint, method, qs, ct string, body io.Reader) {
 	atomic.AddInt64(&b.stat.Inquire, 1)
 	ctx := context.Background()
 	if ep.to > 0 {
@@ -262,12 +277,14 @@ func (b *Broker) inquire(reqid string, ep *endpoint, method, qs, ct string, body
 	if err != nil {
 		atomic.AddInt64(&b.stat.InquireFail, 1)
 		b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to request: %s", reqid, ep.name, err)
+		ch <- &Result{Name: ep.name}
 		return
 	}
 	resp, err := b.cl.Do(req)
 	if err != nil {
 		atomic.AddInt64(&b.stat.InquireFail, 1)
 		//b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to round trip: %s", reqid, ep.name, err)
+		ch <- &Result{Name: ep.name}
 		return
 	}
 	defer resp.Body.Close()
@@ -276,14 +293,10 @@ func (b *Broker) inquire(reqid string, ep *endpoint, method, qs, ct string, body
 	if err != nil {
 		atomic.AddInt64(&b.stat.InquireFail, 1)
 		b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to read: %s", reqid, ep.name, err)
+		ch <- &Result{Name: ep.name}
 		return
 	}
-	err = b.st.StoreResponse(reqid, ep.name, da)
-	if err != nil {
-		atomic.AddInt64(&b.stat.InquireFail, 1)
-		b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to store: %s", reqid, ep.name, err)
-		return
-	}
+	ch <- &Result{Name: ep.name, Data: da}
 }
 
 // Stat gets current Stat, then resets it.
