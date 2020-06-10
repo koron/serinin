@@ -23,10 +23,11 @@ func newClient(cf *Config) *http.Client {
 			ForceAttemptHTTP2:     true,
 			MaxIdleConns:          m,
 			MaxIdleConnsPerHost:   n,
+			MaxConnsPerHost:       n,
 			IdleConnTimeout:       90 * time.Second,
 			TLSHandshakeTimeout:   10 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,
 		},
-		Timeout: 20 * time.Second,
+		//Timeout: 20 * time.Second,
 	}
 }

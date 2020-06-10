@@ -22,11 +22,13 @@ func main() {
 	}
 }
 
-func logSystemMetrics() {
+func logSystemMetrics(b *seri.Broker) {
 	ngo := runtime.NumGoroutine()
+	st := b.Stat()
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	log.Printf("num_of_goroutine=%d heap.in_use=%d stack.in_use=%d", ngo, m.HeapInuse, m.StackInuse)
+	//		log.Printf("goroutine:%d fail:%d=(%d+%d) accept:%d", g, f0+f, f0, f, c)
+	log.Printf("goroutine:%d fail:%d accept:%d heap:%d stack:%d", ngo, st.WorkerFail+st.InquireFail, st.Inquire, m.HeapInuse, m.StackInuse)
 }
 
 func run(ctx context.Context) error {
@@ -36,16 +38,6 @@ func run(ctx context.Context) error {
 	flag.IntVar(&monitor, "monitor", 0, "enable monitoring (poll system metric in each N's second)")
 	flag.Parse()
 
-	if monitor > 0 {
-		interval := time.Second * time.Duration(monitor)
-		go func() {
-			for {
-				logSystemMetrics()
-				time.Sleep(interval)
-			}
-		}()
-	}
-
 	c, err := seri.LoadConfig("serinin_config.json")
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
@@ -54,5 +46,16 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup broker: %w", err)
 	}
+
+	if monitor > 0 {
+		interval := time.Second * time.Duration(monitor)
+		go func() {
+			for {
+				logSystemMetrics(b)
+				time.Sleep(interval)
+			}
+		}()
+	}
+
 	return b.Serve(ctx)
 }
