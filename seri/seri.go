@@ -34,8 +34,6 @@ type Broker struct {
 	log *log.Logger
 	cl  *http.Client
 
-	st Storage
-
 	eps []endpoint
 	ens []string
 
@@ -99,7 +97,6 @@ func NewBroker(cf *Config) (*Broker, error) {
 		cf:     cf.Clone(),
 		log:    log.New(os.Stderr, "", log.LstdFlags),
 		cl:     newClient(cf),
-		st:     newStorage(cf),
 		eps:    eps,
 		ens:    eps2ens(eps),
 		worker: w,
@@ -190,8 +187,14 @@ type problemDetail struct {
 }
 
 type response struct {
-	RequestID string   `json:"request_id"`
-	Endpoints []string `json:"endpoints"`
+	RequestID string `json:"request_id"`
+
+	Results map[string]string `json:"results"`
+}
+
+type Result struct {
+	Name string
+	Data []byte
 }
 
 type dispatchFunc func(reqid string, ch chan *Result, ep *endpoint, qs string)
@@ -205,17 +208,6 @@ func (b *Broker) dispatch(w http.ResponseWriter, r *http.Request, goFn dispatchF
 
 	n := len(b.eps)
 	ch := make(chan *Result, n)
-	go func(rid, method, url string) {
-		results := make([]*Result, 0, n)
-		for len(results) < n {
-			select {
-			case r := <-ch:
-				results = append(results, r)
-			}
-		}
-		close(ch)
-		b.st.Store(rid, method, url, results)
-	}(reqid, r.Method, r.URL.String())
 
 	qs := r.URL.RawQuery
 	if b.worker != nil {
@@ -235,11 +227,20 @@ func (b *Broker) dispatch(w http.ResponseWriter, r *http.Request, goFn dispatchF
 		}()
 	}
 
+	results := make(map[string]string, n)
+	for len(results) < n {
+		select {
+		case r := <-ch:
+			results[r.Name] = string(r.Data)
+		}
+	}
+	close(ch)
+
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(&response{
 		RequestID: reqid,
-		Endpoints: b.ens,
+		Results:   results,
 	})
 }
 
@@ -254,11 +255,6 @@ func (b *Broker) concatQuery(base *url.URL, q string) *url.URL {
 		u.RawQuery = q
 	}
 	return &u
-}
-
-type Result struct {
-	Name string
-	Data []byte
 }
 
 func (b *Broker) inquire(reqid string, ch chan *Result, ep *endpoint, method, qs, ct string, body io.Reader) {
