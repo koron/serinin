@@ -31,23 +31,30 @@ func newRedisStore(cfg *Redis) *redisStore {
 }
 
 func (rs *redisStore) StoreRequest(reqid, method, url string) error {
-	_, err := rs.client.HMSet(reqid, map[string]interface{}{
+	p := rs.client.TxPipeline()
+	_, err := p.HMSet(reqid, map[string]interface{}{
 		"_id":     reqid,
 		"_method": method,
 		"_url":    url,
 	}).Result()
 	if err != nil {
+		p.Discard()
 		return err
 	}
 	if rs.expiresIn <= 0 {
-		return nil
-	}
-	_, err = rs.client.Expire(reqid, time.Duration(rs.expiresIn)).Result()
-	if err != nil {
+		_, err := p.Exec()
 		return err
 	}
-	return nil
+	_, err = p.Expire(reqid, time.Duration(rs.expiresIn)).Result()
+	if err != nil {
+		p.Discard()
+		return err
+	}
+	_, err = p.Exec()
+	return err
 }
+
+var storeCount int
 
 func (rs *redisStore) StoreResponse(reqid, name string, data []byte) error {
 	_, err := rs.client.HSet(reqid, name, data).Result()
