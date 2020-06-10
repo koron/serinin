@@ -68,6 +68,7 @@ func (w *Worker) Close() {
 // ErrWorkerNotStarted shows that Run() is called for not running worker.
 var ErrWorkerNotStarted = errors.New("worker isn't started")
 
+// ErrWorkerQueueFailed shows a queue exceeded.
 var ErrWorkerQueueFailed = errors.New("worker failed to queue a job")
 
 // Run reserves to execute a job.
