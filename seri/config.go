@@ -27,8 +27,14 @@ type Config struct {
 
 	Endpoints map[string]Endpoint `json:"endpoints"`
 
+	// StoreType specify store type: "none", "redis", "memcache"
+	StoreType string `json:"store_type"`
+
 	// Redis is redis configuration.
-	Redis *Redis `json:"redis"`
+	Redis *Redis `json:"redis,omitempty"`
+
+	// Memcache is memcache configuration.
+	Memcache *Memcache `json:"memcache,omitempty"`
 }
 
 // Clone clones a configuration object.
@@ -50,6 +56,12 @@ type Redis struct {
 	Addr     string   `json:"addr"`
 	Password string   `json:"password,omitempty"`
 	DBNum    int      `json:"dbnum,omitempty"`
+	ExpireIn Duration `json:"expire_in"`
+}
+
+// Memcache provides configuration of memcache store.
+type Memcache struct {
+	Addrs    []string `json:"addrs"`
 	ExpireIn Duration `json:"expire_in"`
 }
 

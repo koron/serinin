@@ -14,8 +14,15 @@
     "dst6": { "url": "http://127.0.0.1:10006" }
   },
 
+  "store_type": "discard",
+
   "redis": {
     "addr": "localhost:6379",
+    "expire_in": "120s"
+  },
+
+  "memcache": {
+    "addrs": [ "localhost:11211" ],
     "expire_in": "120s"
   }
 }
