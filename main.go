@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/koron-go/sigctx"
-	"github.com/koron/serinin/seri"
+	"github.com/koron/serinin/internal/seri"
 )
 
 func main() {

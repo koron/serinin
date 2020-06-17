@@ -90,8 +90,9 @@ func NewBroker(cf *Config) (*Broker, error) {
 	if err != nil {
 		return nil, err
 	}
+	ens := eps2ens(eps)
 
-	st, err := newStorage(cf)
+	st, err := newStorage(cf, ens)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +110,7 @@ func NewBroker(cf *Config) (*Broker, error) {
 		cl:     newClient(cf),
 		st:     st,
 		eps:    eps,
-		ens:    eps2ens(eps),
+		ens:    ens,
 		worker: w,
 	}
 	return b, nil

@@ -1,6 +1,8 @@
 .PHONY: build
 build:
-	go build
+	go build -gcflags='-e' .
+	go build -gcflags='-e' ./cmd/dstsrvs
+	go build -gcflags='-e' ./cmd/getres
 
 .PHONY: test
 test:
@@ -17,3 +19,8 @@ vet:
 .PHONY: lint
 lint:
 	golint ./...
+
+.PHONY: clean
+clean:
+	rm -f serinin dstsrvs getres
+	rm -f *.exe *.exe~
