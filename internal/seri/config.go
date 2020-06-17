@@ -35,6 +35,8 @@ type Config struct {
 
 	// Memcache is memcache configuration.
 	Memcache *Memcache `json:"memcache,omitempty"`
+
+	Cache *Cache `json:"cache,omitempty"`
 }
 
 // Clone clones a configuration object.
@@ -62,6 +64,11 @@ type Redis struct {
 // Memcache provides configuration of memcache store.
 type Memcache struct {
 	Addrs    []string `json:"addrs"`
+	ExpireIn Duration `json:"expire_in"`
+}
+
+// Cache provides configuration of go-cache store.
+type Cache struct {
 	ExpireIn Duration `json:"expire_in"`
 }
 

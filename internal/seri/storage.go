@@ -86,7 +86,7 @@ func (rs *redisStore) GetResponse(reqid string) (*Response, error) {
 		}
 		r.Results[k] = v
 	}
-	return nil, nil
+	return r, nil
 }
 
 var _ Storage = (*redisStore)(nil)
@@ -209,6 +209,8 @@ func newStorage(cf *Config, ens []string) (Storage, error) {
 		return newMemcacheStore(cf.Memcache, ens)
 	case "memcache-bin":
 		return newMemcacheBinStore(cf.Memcache, ens)
+	case "cache":
+		return newCacheStore(cf.Cache, ens)
 	default:
 		return nil, fmt.Errorf("unsupported \"store_type\": %q", cf.StoreType)
 	}

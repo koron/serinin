@@ -17,12 +17,16 @@
   "store_type": "discard",
 
   "redis": {
-    "addr": "localhost:6379",
-    "expire_in": "120s"
+    "addr": "127.0.0.1:6379",
+    "expire_in": "60s"
   },
 
   "memcache": {
-    "addrs": [ "localhost:11211" ],
-    "expire_in": "120s"
+    "addrs": [ "127.0.0.1:11211" ],
+    "expire_in": "60s"
+  },
+
+  "cache": {
+    "expire_in": "60s"
   }
 }

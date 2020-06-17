@@ -17,5 +17,6 @@ require (
 	github.com/koron-go/sigctx v1.0.1
 	github.com/onsi/ginkgo v1.12.0 // indirect
 	github.com/onsi/gomega v1.9.0 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	go.opencensus.io v0.22.4 // indirect
 )
