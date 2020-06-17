@@ -262,7 +262,7 @@ func (b *Broker) isTimeout(err error) bool {
 		Error() string
 		Timeout() bool
 	}
-	if errors.As(err, &x); x.Timeout() {
+	if errors.As(err, &x) && x.Timeout() {
 		return true
 	}
 	return false

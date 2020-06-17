@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/koron/serinin/internal/seri"
+	_ "github.com/koron/serinin/internal/storages"
 )
 
 func main() {

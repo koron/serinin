@@ -11,6 +11,7 @@ import (
 
 	"github.com/koron-go/sigctx"
 	"github.com/koron/serinin/internal/seri"
+	_ "github.com/koron/serinin/internal/storages"
 )
 
 func main() {

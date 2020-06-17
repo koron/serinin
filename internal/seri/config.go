@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"sort"
 	"time"
 )
 
@@ -36,12 +37,21 @@ type Config struct {
 	// Memcache is memcache configuration.
 	Memcache *Memcache `json:"memcache,omitempty"`
 
-	Cache *Cache `json:"cache,omitempty"`
+	GoCache *GoCache `json:"gocache,omitempty"`
 }
 
 // Clone clones a configuration object.
 func (c *Config) Clone() Config {
 	return *c
+}
+
+func (c *Config) EntryPointNames() []string {
+	names := make([]string, 0, len(c.Endpoints))
+	for n := range c.Endpoints {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // Endpoint is HTTP(S) server to dispatch requests.
@@ -63,12 +73,13 @@ type Redis struct {
 
 // Memcache provides configuration of memcache store.
 type Memcache struct {
-	Addrs    []string `json:"addrs"`
-	ExpireIn Duration `json:"expire_in"`
+	Addrs        []string `json:"addrs"`
+	MaxIdleConns int      `json:"max_idle_conns"`
+	ExpireIn     Duration `json:"expire_in"`
 }
 
-// Cache provides configuration of go-cache store.
-type Cache struct {
+// GoCache provides configuration of go-cache store.
+type GoCache struct {
 	ExpireIn Duration `json:"expire_in"`
 }
 

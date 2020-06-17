@@ -45,7 +45,8 @@
             "discard",
             "redis",
             "memcache",
-            "memcache-bin"
+            "binmemcache",
+            "gocache"
           ],
           "default": "discard",
           "description": "Storage type"
@@ -55,6 +56,9 @@
         },
         "memcache": {
           "$ref": "#/definitions/Memcache"
+        },
+        "gocache": {
+          "$ref": "#/definitions/GoCache"
         }
       },
       "additionalProperties": false,
@@ -122,6 +126,10 @@
           },
           "minItems": 1
         },
+        "max_idle_conns": {
+          "type": "integer",
+          "description": "max idle connections to pool"
+        },
         "expire_in": {
           "$ref": "#/definitions/Duration",
           "description": "TTL to store responses"
@@ -130,6 +138,21 @@
       "additionalProperties": false,
       "required": [
         "addrs",
+        "expire_in"
+      ]
+    },
+
+    "GoCache": {
+      "type": "object",
+      "description": "go-cache storage configuration",
+      "properties": {
+        "expire_in": {
+          "$ref": "#/definitions/Duration",
+          "description": "TTL to store responses"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
         "expire_in"
       ]
     },

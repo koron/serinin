@@ -26,7 +26,7 @@
     "expire_in": "60s"
   },
 
-  "cache": {
+  "gocache": {
     "expire_in": "60s"
   }
 }

@@ -1,4 +1,4 @@
-package seri
+package binmemcachestore
 
 import (
 	"context"
@@ -8,17 +8,18 @@ import (
 	"time"
 
 	"github.com/charithe/mnemosyne/memcache"
+	"github.com/koron/serinin/internal/seri"
 )
 
-type memcacheBinStore struct {
+type store struct {
 	client    *memcache.Client
 	expiresIn time.Duration
 	ens       []string
 }
 
-var _ Storage = (*memcacheBinStore)(nil)
+var _ seri.Storage = (*store)(nil)
 
-func newMemcacheBinStore(cfg *Memcache, ens []string) (*memcacheBinStore, error) {
+func newStore(cfg *seri.Memcache, ens []string) (*store, error) {
 	if cfg == nil {
 		return nil, errors.New("\"memcache\" is not available")
 	}
@@ -29,15 +30,15 @@ func newMemcacheBinStore(cfg *Memcache, ens []string) (*memcacheBinStore, error)
 	if err != nil {
 		return nil, err
 	}
-	return &memcacheBinStore{
+	return &store{
 		client:    client,
 		expiresIn: time.Duration(cfg.ExpireIn),
 		ens:       ens,
 	}, nil
 }
 
-func (mbs *memcacheBinStore) StoreRequest(reqid, method, url string) error {
-	b, err := json.Marshal(&memcacheRequestItem{
+func (mbs *store) StoreRequest(reqid, method, url string) error {
+	b, err := json.Marshal(&seri.Response{
 		ID:     reqid,
 		Method: method,
 		URL:    url,
@@ -49,12 +50,12 @@ func (mbs *memcacheBinStore) StoreRequest(reqid, method, url string) error {
 	return err
 }
 
-func (mbs *memcacheBinStore) StoreResponse(reqid, name string, data []byte) error {
+func (mbs *store) StoreResponse(reqid, name string, data []byte) error {
 	_, err := mbs.client.Set(context.Background(), []byte(reqid+"."+name), data, memcache.WithExpiry(mbs.expiresIn))
 	return err
 }
 
-func (mbs *memcacheBinStore) extractName(key string, reqid string) string {
+func (mbs *store) extractName(key string, reqid string) string {
 	if !strings.HasPrefix(key, reqid) {
 		return ""
 	}
@@ -64,7 +65,7 @@ func (mbs *memcacheBinStore) extractName(key string, reqid string) string {
 	return key[len(reqid)+1:]
 }
 
-func (mbs *memcacheBinStore) GetResponse(reqid string) (*Response, error) {
+func (mbs *store) GetResponse(reqid string) (*seri.Response, error) {
 	keys := make([][]byte, 1, len(mbs.ens))
 	keys[0] = []byte(reqid)
 	for _, en := range mbs.ens {
@@ -75,7 +76,7 @@ func (mbs *memcacheBinStore) GetResponse(reqid string) (*Response, error) {
 		return nil, err
 	}
 
-	resp := new(Response)
+	resp := new(seri.Response)
 	resp.Results = make(map[string]string)
 	for _, r := range rs {
 		if err := r.Err(); err != nil {
@@ -95,4 +96,10 @@ func (mbs *memcacheBinStore) GetResponse(reqid string) (*Response, error) {
 	}
 
 	return resp, nil
+}
+
+func init() {
+	seri.RegisterStorage("binmemcache", func(cfg *seri.Config) (seri.Storage, error) {
+		return newStore(cfg.Memcache, cfg.EntryPointNames())
+	})
 }
