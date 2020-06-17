@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
+	redis "github.com/go-redis/redis/v7"
 	"github.com/koron/serinin/internal/seri"
-	"github.com/go-redis/redis"
 )
 
 type storage struct {
@@ -25,6 +25,7 @@ func newStorage(cfg *seri.Redis) (*storage, error) {
 			Addr:     cfg.Addr,
 			Password: cfg.Password,
 			DB:       cfg.DBNum,
+			PoolSize: 100,
 		}),
 		expiresIn: cfg.ExpireIn,
 	}, nil

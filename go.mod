@@ -10,7 +10,7 @@ require (
 	github.com/dchest/siphash v1.2.1 // indirect
 	github.com/dgryski/go-jump v0.0.0-20170409065014-e1f439676b57 // indirect
 	github.com/eapache/go-resiliency v1.2.0 // indirect
-	github.com/go-redis/redis v6.15.7+incompatible
+	github.com/go-redis/redis/v7 v7.4.0
 	github.com/google/uuid v1.1.1
 	github.com/koron-go/ctxsrv v1.0.0
 	github.com/koron-go/reqlim v0.1.0
