@@ -1,8 +1,11 @@
 .PHONY: build
 build:
 	go build -gcflags='-e' .
-	go build -gcflags='-e' ./cmd/dstsrvs
 	go build -gcflags='-e' ./cmd/getres
+
+.PHONY: build-all
+build-all: build
+	go build -gcflags='-e' ./cmd/dstsrvs
 
 .PHONY: test
 test:
