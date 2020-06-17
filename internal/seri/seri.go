@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -22,9 +23,11 @@ import (
 
 // Stat stores statistics for requests.
 type Stat struct {
-	Inquire     int64
-	InquireFail int64
-	WorkerFail  int64
+	Inquire        int64
+	InquireFail    int64
+	InquireTimeout int64
+	StoreTimeout   int64
+	WorkerFail     int64
 }
 
 // Broker traps and dispatch HTTP requests to servers.
@@ -87,6 +90,12 @@ func NewBroker(cf *Config) (*Broker, error) {
 	if err != nil {
 		return nil, err
 	}
+	ens := eps2ens(eps)
+
+	st, err := newStorage(cf, ens)
+	if err != nil {
+		return nil, err
+	}
 
 	var w *Worker
 	if cf.WorkerNum > 0 {
@@ -99,9 +108,9 @@ func NewBroker(cf *Config) (*Broker, error) {
 		cf:     cf.Clone(),
 		log:    log.New(os.Stderr, "", log.LstdFlags),
 		cl:     newClient(cf),
-		st:     newStorage(cf),
+		st:     st,
 		eps:    eps,
-		ens:    eps2ens(eps),
+		ens:    ens,
 		worker: w,
 	}
 	return b, nil
@@ -246,6 +255,19 @@ func (b *Broker) concatQuery(base *url.URL, q string) *url.URL {
 	return &u
 }
 
+var once sync.Once
+
+func (b *Broker) isTimeout(err error) bool {
+	var x interface {
+		Error() string
+		Timeout() bool
+	}
+	if errors.As(err, &x); x.Timeout() {
+		return true
+	}
+	return false
+}
+
 func (b *Broker) inquire(reqid string, ep *endpoint, method, qs, ct string, body io.Reader) {
 	atomic.AddInt64(&b.stat.Inquire, 1)
 	ctx := context.Background()
@@ -266,6 +288,10 @@ func (b *Broker) inquire(reqid string, ep *endpoint, method, qs, ct string, body
 	}
 	resp, err := b.cl.Do(req)
 	if err != nil {
+		if b.isTimeout(err) {
+			atomic.AddInt64(&b.stat.InquireTimeout, 1)
+			return
+		}
 		atomic.AddInt64(&b.stat.InquireFail, 1)
 		//b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to round trip: %s", reqid, ep.name, err)
 		return
@@ -280,6 +306,10 @@ func (b *Broker) inquire(reqid string, ep *endpoint, method, qs, ct string, body
 	}
 	err = b.st.StoreResponse(reqid, ep.name, da)
 	if err != nil {
+		if b.isTimeout(err) {
+			atomic.AddInt64(&b.stat.StoreTimeout, 1)
+			return
+		}
 		atomic.AddInt64(&b.stat.InquireFail, 1)
 		b.log.Printf("[WARN] worker: reqid=%s epname=%s: failed to store: %s", reqid, ep.name, err)
 		return
@@ -289,8 +319,10 @@ func (b *Broker) inquire(reqid string, ep *endpoint, method, qs, ct string, body
 // Stat gets current Stat, then resets it.
 func (b *Broker) Stat() Stat {
 	return Stat{
-		Inquire:     atomic.SwapInt64(&b.stat.Inquire, 0),
-		InquireFail: atomic.SwapInt64(&b.stat.InquireFail, 0),
-		WorkerFail:  atomic.SwapInt64(&b.stat.WorkerFail, 0),
+		Inquire:        atomic.SwapInt64(&b.stat.Inquire, 0),
+		InquireFail:    atomic.SwapInt64(&b.stat.InquireFail, 0),
+		InquireTimeout: atomic.SwapInt64(&b.stat.InquireTimeout, 0),
+		StoreTimeout:   atomic.SwapInt64(&b.stat.StoreTimeout, 0),
+		WorkerFail:     atomic.SwapInt64(&b.stat.WorkerFail, 0),
 	}
 }

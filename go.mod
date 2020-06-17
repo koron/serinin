@@ -3,6 +3,7 @@ module github.com/koron/serinin
 go 1.14
 
 require (
+	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/go-redis/redis v6.15.7+incompatible
 	github.com/google/uuid v1.1.1

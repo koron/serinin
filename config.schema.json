@@ -39,8 +39,21 @@
           },
           "description": "Collection of endpoints. The key is name of endpoint."
         },
+        "store_type": {
+          "type": "string",
+          "enum": [
+            "discard",
+            "redis",
+            "memcache"
+          ],
+          "default": "discard",
+          "description": "Storage type"
+        },
         "redis": {
           "$ref": "#/definitions/Redis"
+        },
+        "memcache": {
+          "$ref": "#/definitions/Memcache"
         }
       },
       "additionalProperties": false,
@@ -48,8 +61,7 @@
         "addr",
         "shutdown_timeout",
         "http_client_timeout",
-        "endpoints",
-        "redis"
+        "endpoints"
       ]
     },
 
@@ -94,6 +106,29 @@
       "additionalProperties": false,
       "required": [
         "addr",
+        "expire_in"
+      ]
+    },
+
+    "Memcache": {
+      "type": "object",
+      "description": "Memcache configuration to store responses",
+      "properties": {
+        "addrs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "expire_in": {
+          "$ref": "#/definitions/Duration",
+          "description": "TTL to store responses"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "addrs",
         "expire_in"
       ]
     },
