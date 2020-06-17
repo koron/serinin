@@ -207,6 +207,8 @@ func newStorage(cf *Config, ens []string) (Storage, error) {
 		return newRedisStore(cf.Redis)
 	case "memcache":
 		return newMemcacheStore(cf.Memcache, ens)
+	case "memcache-bin":
+		return newMemcacheBinStore(cf.Memcache, ens)
 	default:
 		return nil, fmt.Errorf("unsupported \"store_type\": %q", cf.StoreType)
 	}

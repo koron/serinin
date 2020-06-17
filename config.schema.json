@@ -44,7 +44,8 @@
           "enum": [
             "discard",
             "redis",
-            "memcache"
+            "memcache",
+            "memcache-bin"
           ],
           "default": "discard",
           "description": "Storage type"
