@@ -21,12 +21,15 @@ var _ seri.Storage = (*store)(nil)
 
 func newStore(cfg *seri.Memcache, ens []string) (*store, error) {
 	if cfg == nil {
-		return nil, errors.New("\"memcache\" is not available")
+		return nil, errors.New("\"binmemcache\" is not available")
 	}
 	if len(cfg.Addrs) == 0 {
 		return nil, errors.New("\"addrs\" requires one or more addresses")
 	}
-	client, err := memcache.NewSimpleClient(cfg.Addrs...)
+	client, err := memcache.NewClient(
+		memcache.WithNodePicker(memcache.NewSimpleNodePicker(cfg.Addrs...)),
+		memcache.WithConnectionsPerNode(cfg.ConnsPerNode),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -100,6 +103,6 @@ func (mbs *store) GetResponse(reqid string) (*seri.Response, error) {
 
 func init() {
 	seri.RegisterStorage("binmemcache", func(cfg *seri.Config) (seri.Storage, error) {
-		return newStore(cfg.Memcache, cfg.EntryPointNames())
+		return newStore(cfg.BinMemcache, cfg.EntryPointNames())
 	})
 }

@@ -25,7 +25,7 @@ func newStorage(cfg *seri.Redis) (*storage, error) {
 			Addr:     cfg.Addr,
 			Password: cfg.Password,
 			DB:       cfg.DBNum,
-			PoolSize: 100,
+			PoolSize: cfg.PoolSize,
 		}),
 		expiresIn: cfg.ExpireIn,
 	}, nil

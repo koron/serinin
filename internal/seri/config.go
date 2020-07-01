@@ -28,7 +28,8 @@ type Config struct {
 
 	Endpoints map[string]Endpoint `json:"endpoints"`
 
-	// StoreType specify store type: "none", "redis", "memcache"
+	// StoreType specify store type: "none", "redis", "memcache",
+	// "binmemcache", "gocache"
 	StoreType string `json:"store_type"`
 
 	// Redis is redis configuration.
@@ -37,6 +38,10 @@ type Config struct {
 	// Memcache is memcache configuration.
 	Memcache *Memcache `json:"memcache,omitempty"`
 
+	// BinMemcache is memcache configuration with binary protocol.
+	BinMemcache *Memcache `json:"binmemcache,omitempty"`
+
+	// GoCache is configuration for in-process memory cache.
 	GoCache *GoCache `json:"gocache,omitempty"`
 }
 
@@ -69,13 +74,23 @@ type Redis struct {
 	Password string   `json:"password,omitempty"`
 	DBNum    int      `json:"dbnum,omitempty"`
 	ExpireIn Duration `json:"expire_in"`
+
+	// PoolSize is for size of connection pool.
+	// Default zero means 10 times of CPU number (runtime.NumCPU()).
+	PoolSize int `json:"pool_size"`
 }
 
 // Memcache provides configuration of memcache store.
 type Memcache struct {
-	Addrs        []string `json:"addrs"`
-	MaxIdleConns int      `json:"max_idle_conns"`
-	ExpireIn     Duration `json:"expire_in"`
+	Addrs    []string `json:"addrs"`
+	ExpireIn Duration `json:"expire_in"`
+
+	// MaxIdleConns limitates number of idle connections. This is available for
+	// "memcache" store only.
+	MaxIdleConns int `json:"max_idle_conns"`
+	// ConnsPerNode limitates number of connections for a node. This is
+	// available for "binmemcache" store only.
+	ConnsPerNode int `json:"conns_per_node"`
 }
 
 // GoCache provides configuration of go-cache store.

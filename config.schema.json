@@ -57,6 +57,9 @@
         "memcache": {
           "$ref": "#/definitions/Memcache"
         },
+        "binmemcache": {
+          "$ref": "#/definitions/Memcache"
+        },
         "gocache": {
           "$ref": "#/definitions/GoCache"
         }
@@ -106,6 +109,10 @@
         "expire_in": {
           "$ref": "#/definitions/Duration",
           "description": "TTL to store responses"
+        },
+        "pool_size": {
+          "type": "integer",
+          "description": "PoolSize is for size of connection pool. Default zero means 10 times of CPU number (runtime.NumCPU())."
         }
       },
       "additionalProperties": false,
@@ -126,13 +133,17 @@
           },
           "minItems": 1
         },
-        "max_idle_conns": {
-          "type": "integer",
-          "description": "max idle connections to pool"
-        },
         "expire_in": {
           "$ref": "#/definitions/Duration",
           "description": "TTL to store responses"
+        },
+        "max_idle_conns": {
+          "type": "integer",
+          "description": "max idle connections to pool. available for \"memcache\" store only."
+        },
+        "conns_per_node": {
+          "type": "integer",
+          "description": "number of parallel connections to open per node. available for \"binmemcache\" store only."
         }
       },
       "additionalProperties": false,
