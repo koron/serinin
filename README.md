@@ -17,4 +17,4 @@ It is wrote in JSON Schema format.
 
 ## Design
 
-See <./DESIGN.md> for design document.
+See [DESIGN.md](./DESIGN.md) for design document.

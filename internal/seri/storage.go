@@ -4,6 +4,8 @@ import (
 	"fmt"
 )
 
+// Response provides response's information which include request information
+// and responses from each end points.
 type Response struct {
 	ID      string            `json:"_id"`
 	Method  string            `json:"_method"`

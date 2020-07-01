@@ -50,6 +50,7 @@ func (c *Config) Clone() Config {
 	return *c
 }
 
+// EntryPointNames returns array of name of end points.
 func (c *Config) EntryPointNames() []string {
 	names := make([]string, 0, len(c.Endpoints))
 	for n := range c.Endpoints {
