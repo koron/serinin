@@ -26,6 +26,11 @@
     "expire_in": "60s"
   },
 
+  "binmemcache": {
+    "addrs": [ "127.0.0.1:11211" ],
+    "expire_in": "60s"
+  },
+
   "gocache": {
     "expire_in": "60s"
   }

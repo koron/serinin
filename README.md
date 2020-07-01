@@ -14,3 +14,7 @@
 
 See `config.schema.json` for the schema of configuration.
 It is wrote in JSON Schema format.
+
+## Design
+
+See <./DESIGN.md> for design document.

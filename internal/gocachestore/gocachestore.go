@@ -19,7 +19,7 @@ var _ seri.Storage = (*storage)(nil)
 
 func newStore(cfg *seri.GoCache, ens []string) (*storage, error) {
 	if cfg == nil {
-		return nil, errors.New("\"cache\" is not available")
+		return nil, errors.New("\"cache\" configuration is not available")
 	}
 	c := cache.New(time.Duration(cfg.ExpireIn), 15*time.Second)
 	return &storage{

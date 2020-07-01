@@ -21,7 +21,7 @@ var _ seri.Storage = (*store)(nil)
 
 func newStore(cfg *seri.Memcache, ens []string) (*store, error) {
 	if cfg == nil {
-		return nil, errors.New("\"binmemcache\" is not available")
+		return nil, errors.New("\"binmemcache\" configuration is not available")
 	}
 	if len(cfg.Addrs) == 0 {
 		return nil, errors.New("\"addrs\" requires one or more addresses")

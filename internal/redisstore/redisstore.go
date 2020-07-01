@@ -18,7 +18,7 @@ var _ seri.Storage = (*storage)(nil)
 
 func newStorage(cfg *seri.Redis) (*storage, error) {
 	if cfg == nil {
-		return nil, errors.New("\"redis\" is not available")
+		return nil, errors.New("\"redis\" configuration is not available")
 	}
 	return &storage{
 		client: redis.NewClient(&redis.Options{
