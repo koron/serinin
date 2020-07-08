@@ -47,14 +47,16 @@ func run(ctx context.Context) error {
 		handler int
 
 		storeType string
+		config    string
 	)
 	flag.IntVar(&monitor, "monitor", 0, "enable monitoring (poll system metric in each N's second)")
 	flag.IntVar(&worker, "worker", 0, "override worker_num configuration if larger than zero")
 	flag.IntVar(&handler, "handler", 0, "override max_handlers configuration if larger than zero")
 	flag.StringVar(&storeType, "storetype", "", "override store_type configuration if not empty")
+	flag.StringVar(&config, "config", "serinin_config.json", "path of configuration file")
 	flag.Parse()
 
-	c, err := seri.LoadConfig("serinin_config.json")
+	c, err := seri.LoadConfig(config)
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}

@@ -34,7 +34,8 @@ jobs:
     - name: Build release binaries
       run: |
         echo ${GITHUB_REF##*/}
-        goxz -d goxz -pv ${GITHUB_REF##*/} -os windows,linux,darwin -arch=amd64
+        goxz -d goxz -pv ${GITHUB_REF##*/} -os windows,linux,darwin -arch=amd64 \
+          - include serinin_config-sample.json
 
     - name: Create a release
       uses: actions/create-release@v1
