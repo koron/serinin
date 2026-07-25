@@ -26,7 +26,7 @@ func newStore(cfg *seri.Memcache, ens []string) (*store, error) {
 		return nil, errors.New("\"addrs\" requires one or more addresses")
 	}
 	if time.Duration(cfg.ExpireIn) < time.Second {
-		return nil, fmt.Errorf("\"expire_in\" must be larger than 1 second: %s", cfg.ExpireIn)
+		return nil, fmt.Errorf("\"expire_in\" must be larger than 1 second: %v", cfg.ExpireIn)
 	}
 	c := memcache.New(cfg.Addrs...)
 	if cfg.MaxIdleConns > 0 {
