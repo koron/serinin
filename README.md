@@ -1,6 +1,8 @@
 # serinin - multicast HTTP request
 
-[![Actions/Go](https://github.com/koron/serinin/workflows/Go/badge.svg)](https://github.com/koron/serinin/actions?query=workflow%3AGo)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/koron/serinin)](https://pkg.go.dev/github.com/koron/serinin)
+[![Actions/Go](https://github.com/koron/serinin/actions/workflows/go.yml/badge.svg)](https://github.com/koron/serinin/actions/workflows/go.yml)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/koron/serinin)
 
 ## Getting started
 
