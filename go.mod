@@ -6,10 +6,10 @@ require (
 	github.com/bradfitz/gomemcache v0.0.0-20230124162541-5f7a7d875746
 	github.com/charithe/mnemosyne v0.0.1
 	github.com/go-redis/redis/v7 v7.4.1
-	github.com/google/uuid v1.3.0
-	github.com/koron-go/ctxsrv v1.0.0
+	github.com/google/uuid v1.6.0
+	github.com/koron-go/ctxsrv v1.0.2
 	github.com/koron-go/reqlim v0.1.0
-	github.com/koron-go/sigctx v1.0.1
+	github.com/koron-go/sigctx v1.1.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 )
 
